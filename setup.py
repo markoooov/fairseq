@@ -5,7 +5,6 @@
 # LICENSE file in the root directory of this source tree.
 
 from setuptools import setup, find_packages, Extension
-from torch.utils import cpp_extension
 import sys
 
 
@@ -61,13 +60,26 @@ extensions = [
         language='c++',
         extra_compile_args=extra_compile_args,
     ),
-    cpp_extension.CppExtension(
-        'fairseq.libnat',
-        sources=[
-            'fairseq/clib/libnat/edit_dist.cpp',
-        ],
-    )
 ]
+
+
+cmdclass = {}
+
+
+try:
+    # torch is not available when building docs
+    from torch.utils import cpp_extension
+    extensions.extend([
+        cpp_extension.CppExtension(
+            'fairseq.libnat',
+            sources=[
+                'fairseq/clib/libnat/edit_dist.cpp',
+            ],
+        ),
+    ])
+    cmdclass['build_ext'] = cpp_extension.BuildExtension
+except ImportError:
+    pass
 
 
 setup(
@@ -85,19 +97,22 @@ setup(
     long_description=readme,
     long_description_content_type='text/markdown',
     setup_requires=[
-        'cython',
+        'cython<0.29',
         'numpy',
         'setuptools>=18.0',
     ],
     install_requires=[
         'cffi',
-        'cython',
+        'cython<0.29',
         'fastBPE',
         'numpy',
         'regex',
         'sacrebleu',
         'torch',
         'tqdm',
+    ],
+    dependency_links=[
+        'http://github.com/myleott/fastBPE/tarball/add_language_level#egg=fastBPE-0.1.0',
     ],
     packages=find_packages(exclude=['scripts', 'tests']),
     ext_modules=extensions,
@@ -113,6 +128,6 @@ setup(
             'fairseq-validate = fairseq_cli.validate:cli_main',
         ],
     },
-    cmdclass={'build_ext': cpp_extension.BuildExtension},
+    cmdclass=cmdclass,
     zip_safe=False,
 )
